@@ -1,135 +1,149 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Super Akimmcuy World</title>
+    <title>Super Akimmcuy Bros</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #5c94fc; font-family: 'Courier New', Courier, monospace; }
-        #game-ui { position: absolute; top: 20px; left: 20px; color: white; text-shadow: 3px 3px #000; z-index: 10; }
-        canvas { display: block; }
+        body { margin: 0; overflow: hidden; background: #5c94fc; font-family: 'Arial Black', sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        #hud { position: absolute; top: 20px; left: 20px; color: white; text-shadow: 2px 2px #000; font-size: 24px; }
     </style>
 </head>
 <body>
-    <div id="game-ui">
-        <h1 style="margin:0">MARIO AKIMMCUYY</h1>
-        <h2 style="margin:0">SKOR: <span id="score">0</span></h2>
-    </div>
-    <canvas id="gameCanvas"></canvas>
+    <div id="hud">MARIO AKIMMCUYY<br>COINS: <span id="coins">0</span></div>
+    <div id="canvas-container"><canvas id="gameCanvas"></canvas></div>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-const scoreEl = document.getElementById("score");
+canvas.width = 800; canvas.height = 400;
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+let coins = 0;
+let cameraX = 0;
 
-let scrollOffset = 0;
-let currentScore = 0;
-
-// OBJEK PLAYER (MARIO)
 const player = {
-    x: 100, y: 100, w: 40, h: 55,
-    color: "#ff0000", dy: 0,
-    jumpForce: 15, gravity: 0.8,
-    speed: 7, grounded: false
+    x: 100, y: 300, w: 30, h: 40,
+    vx: 0, vy: 0, speed: 5, jump: -15,
+    grounded: false, color: "red"
 };
+
+const platforms = [
+    {x: 0, y: 360, w: 2000, h: 40, type: 'ground'}, // Tanah panjang
+    {x: 400, y: 250, w: 40, h: 40, type: 'block', hit: false}, // Kotak ?
+    {x: 440, y: 250, w: 40, h: 40, type: 'brick'},
+    {x: 480, y: 250, w: 40, h: 40, type: 'block', hit: false},
+    {x: 600, y: 300, w: 60, h: 60, type: 'pipe'}, // Pipa
+    {x: 900, y: 300, w: 60, h: 60, type: 'pipe'}
+];
+
+const enemies = [
+    {x: 700, y: 330, w: 30, h: 30, vx: -2, alive: true},
+    {x: 1200, y: 330, w: 30, h: 30, vx: -2, alive: true}
+];
 
 const keys = {};
 
-// DESAIN LEVEL (Pipa dan Awan)
-const pipes = [
-    {x: 600, w: 80, h: 120},
-    {x: 1100, w: 80, h: 180},
-    {x: 1600, w: 80, h: 100},
-    {x: 2100, w: 80, h: 220}
-];
-
-function drawMario(x, y) {
-    // Badan/Baju
-    ctx.fillStyle = "red";
-    ctx.fillRect(x, y, 40, 30);
-    // Celana Biru
-    ctx.fillStyle = "blue";
-    ctx.fillRect(x, y + 30, 40, 20);
-    // Sepatu
-    ctx.fillStyle = "#542d00";
-    ctx.fillRect(x, y + 50, 15, 10);
-    ctx.fillRect(x + 25, y + 50, 15, 10);
-    // Topi
-    ctx.fillStyle = "#b30000";
-    ctx.fillRect(x - 5, y, 45, 10);
-    // Muka
-    ctx.fillStyle = "#ffcc99";
-    ctx.fillRect(x + 10, y + 5, 25, 20);
-}
-
-function drawBackground() {
-    // Gambar Tanah Berumput
-    ctx.fillStyle = "#70483c"; // Cokelat
-    ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
-    ctx.fillStyle = "#3cb043"; // Rumput Hijau
-    ctx.fillRect(0, canvas.height - 60, canvas.width, 20);
-
-    // Gambar Pipa-Pipa
-    pipes.forEach(pipe => {
-        let pipeX = pipe.x - scrollOffset;
-        // Batang Pipa
-        ctx.fillStyle = "#32cd32";
-        ctx.fillRect(pipeX, canvas.height - 60 - pipe.h, pipe.w, pipe.h);
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(pipeX, canvas.height - 60 - pipe.h, pipe.w, pipe.h);
-        // Kepala Pipa
-        ctx.fillStyle = "#228b22";
-        ctx.fillRect(pipeX - 5, canvas.height - 65 - pipe.h, pipe.w + 10, 30);
-        ctx.strokeRect(pipeX - 5, canvas.height - 65 - pipe.h, pipe.w + 10, 30);
-    });
-}
-
 function update() {
-    // Gerakan
-    if (keys["ArrowRight"]) {
-        player.x += player.speed;
-        if (player.x > canvas.width / 2) {
-            scrollOffset += player.speed;
-            currentScore++;
-        }
-    }
-    if (keys["ArrowLeft"] && player.x > 0) player.x -= player.speed;
+    if (keys["ArrowRight"]) player.vx = player.speed;
+    else if (keys["ArrowLeft"]) player.vx = -player.speed;
+    else player.vx = 0;
 
-    // Lompat
-    if ((keys[" "] || keys["ArrowUp"]) && player.grounded) {
-        player.dy = -player.jumpForce;
+    if ((keys["ArrowUp"] || keys[" "]) && player.grounded) {
+        player.vy = player.jump;
         player.grounded = false;
     }
 
-    player.dy += player.gravity;
-    player.y += player.dy;
+    player.vy += 0.8; // Gravity
+    player.x += player.vx;
+    player.y += player.vy;
 
-    // Cek Pijakan Tanah
-    if (player.y + player.h >= canvas.height - 60) {
-        player.y = canvas.height - 60 - player.h;
-        player.dy = 0;
-        player.grounded = true;
-    }
+    // Camera follow
+    cameraX = player.x - 200;
 
-    // Update Skor di UI
-    scoreEl.innerText = Math.floor(currentScore / 5);
+    // Collision detection
+    player.grounded = false;
+    platforms.forEach(p => {
+        if (player.x < p.x + p.w && player.x + player.w > p.x &&
+            player.y < p.y + p.h && player.y + player.h > p.y) {
+            
+            // Collision dari atas
+            if (player.vy > 0 && player.y + player.h - player.vy <= p.y) {
+                player.y = p.y - player.h;
+                player.vy = 0;
+                player.grounded = true;
+            }
+            // Sundul bawah kotak
+            else if (player.vy < 0 && player.y - player.vy >= p.y + p.h) {
+                player.y = p.y + p.h;
+                player.vy = 0;
+                if(p.type === 'block' && !p.hit) {
+                    p.hit = true; coins++; 
+                    document.getElementById('coins').innerText = coins;
+                }
+            }
+        }
+    });
 
-    render();
+    // Enemy update
+    enemies.forEach(e => {
+        if (!e.alive) return;
+        e.x += e.vx;
+        // Pantul enemy di pipa/batas
+        if(e.x < 500 || e.x > 1500) e.vx *= -1;
+
+        // Player vs Enemy
+        if (player.x < e.x + e.w && player.x + player.w > e.x &&
+            player.y < e.y + e.h && player.y + player.h > e.y) {
+            if (player.vy > 0) { // Injek
+                e.alive = false;
+                player.vy = -10;
+            } else { // Mati
+                player.x = 100; player.y = 100;
+            }
+        }
+    });
+
+    draw();
     requestAnimationFrame(update);
 }
 
-function render() {
+function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawBackground();
-    drawMario(player.x - (player.x > canvas.width/2 ? scrollOffset : 0), player.y);
+    ctx.save();
+    ctx.translate(-cameraX, 0);
+
+    // Draw Platforms
+    platforms.forEach(p => {
+        if(p.type === 'ground') ctx.fillStyle = "#70483c";
+        else if(p.type === 'pipe') ctx.fillStyle = "#32cd32";
+        else if(p.type === 'block') ctx.fillStyle = p.hit ? "#8a6d00" : "#ffcc33";
+        else ctx.fillStyle = "#a52a2a";
+        
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+        ctx.strokeStyle = "black"; ctx.strokeRect(p.x, p.y, p.w, p.h);
+        if(p.type === 'block' && !p.hit) {
+            ctx.fillStyle = "black"; ctx.fillText("?", p.x + 15, p.y + 25);
+        }
+    });
+
+    // Draw Enemies (Goomba)
+    enemies.forEach(e => {
+        if(!e.alive) return;
+        ctx.fillStyle = "#8b4513";
+        ctx.fillRect(e.x, e.y, e.w, e.h);
+        ctx.fillStyle = "white"; ctx.fillRect(e.x+5, e.y+5, 5, 5); ctx.fillRect(e.x+20, e.y+5, 5, 5);
+    });
+
+    // Draw Mario
+    ctx.fillStyle = "blue"; ctx.fillRect(player.x, player.y+20, player.w, 20); // Celana
+    ctx.fillStyle = "red"; ctx.fillRect(player.x, player.y, player.w, 20); // Baju
+    ctx.fillStyle = "#ffcc99"; ctx.fillRect(player.x+5, player.y+5, 20, 15); // Muka
+    ctx.fillStyle = "darkred"; ctx.fillRect(player.x-2, player.y, player.w+4, 8); // Topi
+
+    ctx.restore();
 }
 
 window.addEventListener("keydown", e => keys[e.key] = true);
 window.addEventListener("keyup", e => keys[e.key] = false);
-
 update();
 </script>
 </body>
