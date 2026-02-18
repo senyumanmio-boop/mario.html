@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Super Akimmcuy Bros - Hard Mode</title>
+    <title>Super Akimmcuy - Solid Wall Edition</title>
     <style>
         body { margin: 0; overflow: hidden; background: #5c94fc; font-family: 'Arial Black', sans-serif; }
         #hud { position: absolute; top: 20px; left: 20px; color: white; text-shadow: 2px 2px #000; font-size: 20px; z-index: 100; }
@@ -10,7 +10,7 @@
 </head>
 <body>
     <div id="hud">MARIO AKIMMCUYY | COINS: <span id="coins">0</span></div>
-    <div id="msg">YOU WIN! 🏆</div>
+    <div id="msg">TAMAT! 🏆</div>
     <canvas id="gameCanvas"></canvas>
 
 <script>
@@ -29,127 +29,91 @@ const player = {
     grounded: false
 };
 
-// --- DESIGN LEVEL (Platform, Pipa, Jurang) ---
+// --- LEVEL DESIGN: RINTANGAN SUSAH ---
 const platforms = [
-    // Lantai Awal
     {x: 0, y: canvas.height - 60, w: 1000, h: 60, type: 'ground'},
-    // Rintangan Kotak & Bata
     {x: 400, y: canvas.height - 200, w: 40, h: 40, type: 'block', hit: false},
     {x: 440, y: canvas.height - 200, w: 40, h: 40, type: 'brick'},
     {x: 480, y: canvas.height - 200, w: 40, h: 40, type: 'block', hit: false},
-    // Pipa-Pipa
-    {x: 700, y: canvas.height - 140, w: 70, h: 80, type: 'pipe'},
-    {x: 900, y: canvas.height - 180, w: 70, h: 120, type: 'pipe'},
     
-    // JURANG PERTAMA & Lantai Berikutnya
-    {x: 1150, y: canvas.height - 60, w: 500, h: 60, type: 'ground'},
-    {x: 1300, y: canvas.height - 220, w: 120, h: 30, type: 'brick'},
+    // PIPA PADAT (Tembok)
+    {x: 700, y: canvas.height - 160, w: 80, h: 100, type: 'pipe'},
+    {x: 950, y: canvas.height - 210, w: 80, h: 150, type: 'pipe'},
     
-    // TANGGA SUSAH
-    {x: 1750, y: canvas.height - 100, w: 50, h: 40, type: 'brick'},
-    {x: 1800, y: canvas.height - 140, w: 50, h: 80, type: 'brick'},
-    {x: 1850, y: canvas.height - 180, w: 50, h: 120, type: 'brick'},
-    {x: 1900, y: canvas.height - 220, w: 50, h: 160, type: 'brick'},
+    // JURANG & LANTAI 2
+    {x: 1200, y: canvas.height - 60, w: 600, h: 60, type: 'ground'},
+    {x: 1400, y: canvas.height - 200, w: 150, h: 30, type: 'brick'},
     
-    // LANTAI TERAKHIR
-    {x: 2100, y: canvas.height - 60, w: 800, h: 60, type: 'ground'},
-    // TIANG FINISH
-    {x: 2700, y: canvas.height - 360, w: 10, h: 300, type: 'finish'}
-];
-
-const enemies = [
-    {x: 600, y: canvas.height - 100, w: 40, h: 40, vx: -2, alive: true, range: [400, 700]},
-    {x: 1400, y: canvas.height - 100, w: 40, h: 40, vx: -3, alive: true, range: [1150, 1600]},
-    {x: 2300, y: canvas.height - 100, w: 40, h: 40, vx: -4, alive: true, range: [2100, 2600]}
+    // TANGGA MAUT (Sangat Solid)
+    {x: 1900, y: canvas.height - 100, w: 50, h: 40, type: 'brick'},
+    {x: 1950, y: canvas.height - 140, w: 50, h: 80, type: 'brick'},
+    {x: 2000, y: canvas.height - 180, w: 50, h: 120, type: 'brick'},
+    {x: 2050, y: canvas.height - 220, w: 50, h: 160, type: 'brick'},
+    
+    {x: 2250, y: canvas.height - 60, w: 800, h: 60, type: 'ground'},
+    {x: 2800, y: canvas.height - 360, w: 10, h: 300, type: 'finish'}
 ];
 
 const keys = {};
 
-function checkCollision(obj, p) {
-    let dx = (obj.x + obj.w / 2) - (p.x + p.w / 2);
-    let dy = (obj.y + obj.h / 2) - (p.y + p.h / 2);
-    let width = (obj.w + p.w) / 2;
-    let height = (obj.h + p.h) / 2;
-    let crossWidth = width * dy;
-    let crossHeight = height * dx;
-
-    if (Math.abs(dx) <= width && Math.abs(dy) <= height) {
-        if (crossWidth > crossHeight) {
-            return (crossWidth > (-crossHeight)) ? 'top' : 'right';
-        } else {
-            return (crossWidth > (-crossHeight)) ? 'left' : 'bottom';
-        }
-    }
-    return null;
-}
-
 function update() {
     if (win) return;
 
+    // Reset Velocity Horizontal
+    player.vx = 0;
     if (keys["ArrowRight"]) player.vx = player.speed;
-    else if (keys["ArrowLeft"]) player.vx = -player.speed;
-    else player.vx = 0;
+    if (keys["ArrowLeft"]) player.vx = -player.speed;
 
-    if ((keys["ArrowUp"] || keys[" "]) && player.grounded) {
-        player.vy = player.jump;
-        player.grounded = false;
-    }
+    // Gravitasi
+    player.vy += 0.8;
 
-    player.vy += 0.8; 
+    // --- COLLISION LOGIC KERAS ---
+    
+    // 1. Cek Sumbu X (Nabrak Samping)
     player.x += player.vx;
-    player.y += player.vy;
-
-    cameraX = player.x - canvas.width / 3;
-    player.grounded = false;
-
-    // Platform & Solid Collision
     platforms.forEach(p => {
-        let col = checkCollision(player, p);
-        if (col) {
-            if (p.type === 'finish') {
-                win = true;
-                document.getElementById('msg').style.display = 'block';
-                return;
-            }
-            if (col === 'bottom') {
-                player.y = p.y - player.h;
-                player.vy = 0;
-                player.grounded = true;
-            } else if (col === 'top') {
-                player.y = p.y + p.h;
-                player.vy = 5;
-                if (p.type === 'block' && !p.hit) {
-                    p.hit = true; coins++;
-                    document.getElementById('coins').innerText = coins;
-                }
-            } else if (col === 'left') {
+        if (player.x < p.x + p.w && player.x + player.w > p.x &&
+            player.y < p.y + p.h && player.y + player.h > p.y) {
+            
+            if (p.type === 'finish') { win = true; document.getElementById('msg').style.display='block'; return; }
+            
+            if (player.vx > 0) { // Nabrak Kanan
                 player.x = p.x - player.w;
-            } else if (col === 'right') {
+            } else if (player.vx < 0) { // Nabrak Kiri
                 player.x = p.x + p.w;
             }
         }
     });
 
-    // Jatuh ke Jurang
-    if (player.y > canvas.height) {
-        player.x = 100; player.y = 100; player.vy = 0;
-    }
+    // 2. Cek Sumbu Y (Injek/Sundul)
+    player.grounded = false;
+    player.y += player.vy;
+    platforms.forEach(p => {
+        if (player.x < p.x + p.w && player.x + player.w > p.x &&
+            player.y < p.y + p.h && player.y + player.h > p.y) {
+            
+            if (p.type === 'finish') return;
 
-    // Enemy logic
-    enemies.forEach(e => {
-        if (!e.alive) return;
-        e.x += e.vx;
-        if (e.x < e.range[0] || e.x > e.range[1]) e.vx *= -1;
-
-        if (checkCollision(player, e)) {
-            if (player.vy > 0 && player.y < e.y) {
-                e.alive = false;
-                player.vy = -12;
-            } else {
-                player.x = 100; player.y = 100;
+            if (player.vy > 0) { // Jatuh ke Tanah
+                player.y = p.y - player.h;
+                player.vy = 0;
+                player.grounded = true;
+            } else if (player.vy < 0) { // Sundul Atas
+                player.y = p.y + p.h;
+                player.vy = 2; // Biar mantul dikit
+                if (p.type === 'block' && !p.hit) {
+                    p.hit = true; coins++;
+                    document.getElementById('coins').innerText = coins;
+                }
             }
         }
     });
+
+    if (keys[" "] && player.grounded) player.vy = player.jump;
+
+    // Camera & Fall
+    cameraX = player.x - canvas.width / 3;
+    if (player.y > canvas.height) { player.x = 100; player.y = 100; player.vy = 0; }
 
     draw();
     requestAnimationFrame(update);
@@ -160,30 +124,25 @@ function draw() {
     ctx.save();
     ctx.translate(-cameraX, 0);
 
+    // Gambar Platforms
     platforms.forEach(p => {
         if (p.type === 'ground') ctx.fillStyle = "#70483c";
         else if (p.type === 'pipe') ctx.fillStyle = "#32cd32";
-        else if (p.type === 'block') ctx.fillStyle = p.hit ? "#8a6d00" : "#ffcc33";
+        else if (p.type === 'block') ctx.fillStyle = p.hit ? "#555" : "#ffcc33";
         else if (p.type === 'finish') ctx.fillStyle = "white";
         else ctx.fillStyle = "#a52a2a";
         
         ctx.fillRect(p.x, p.y, p.w, p.h);
         ctx.strokeStyle = "black";
+        ctx.lineWidth = 2;
         ctx.strokeRect(p.x, p.y, p.w, p.h);
-        
+
         if(p.type === 'finish') {
-            ctx.fillStyle = "red"; ctx.fillRect(p.x - 30, p.y, 30, 40);
+            ctx.fillStyle = "red"; ctx.fillRect(p.x - 40, p.y, 40, 40);
         }
     });
 
-    enemies.forEach(e => {
-        if (!e.alive) return;
-        ctx.fillStyle = "#5c2e0e"; // Goomba
-        ctx.fillRect(e.x, e.y, e.w, e.h);
-        ctx.fillStyle = "white"; ctx.fillRect(e.x+5, e.y+5, 8, 8); ctx.fillRect(e.x+25, e.y+5, 8, 8);
-    });
-
-    // Mario
+    // Gambar Mario
     ctx.fillStyle = "red"; ctx.fillRect(player.x, player.y, player.w, 30);
     ctx.fillStyle = "blue"; ctx.fillRect(player.x, player.y + 30, player.w, 20);
     ctx.fillStyle = "#ffcc99"; ctx.fillRect(player.x + 10, player.y + 5, 20, 20);
