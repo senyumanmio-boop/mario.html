@@ -1,159 +1,187 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Super Akimmcuy - Fix Jump & Solid</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Super Akimmcuy Bros Ultimate</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #5c94fc; font-family: 'Arial Black', sans-serif; }
-        #hud { position: absolute; top: 20px; left: 20px; color: white; text-shadow: 2px 2px #000; font-size: 20px; z-index: 100; }
-        #msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: yellow; font-size: 50px; text-shadow: 5px 5px #000; display: none; z-index: 100; text-align: center; }
+        body { margin: 0; overflow: hidden; background: #5c94fc; font-family: 'Arial Black', sans-serif; touch-action: manipulation; }
+        #hud { position: absolute; top: 10px; left: 10px; color: white; text-shadow: 2px 2px #000; z-index: 10; font-size: 16px; }
+        .controls { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; z-index: 100; }
+        .btn { width: 65px; height: 65px; background: rgba(0,0,0,0.5); border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; border: 2px solid white; font-size: 20px; }
+        #win-screen { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: black; color: yellow; padding: 30px; text-align: center; display: none; z-index: 200; border: 5px solid gold; }
     </style>
 </head>
 <body>
-    <div id="hud">MARIO AKIMMCUYY | COINS: <span id="coins">0</span></div>
-    <div id="msg">TAMAT! 🏆<br><span style="font-size:20px">Gokil Lu Bos!</span></div>
+    <div id="hud">LVL: <span id="lvl">1</span> | COINS: <span id="cns">0</span></div>
+    <div id="win-screen"><h1>COURSE CLEAR! 🏁</h1><p>Gila Lu Jago Banget!</p></div>
+
+    <div class="controls">
+        <div style="display:flex; gap:15px;">
+            <div class="btn" id="btn-left">◀</div>
+            <div class="btn" id="btn-down">▼</div>
+            <div class="btn" id="btn-right">▶</div>
+        </div>
+        <div class="btn" id="btn-jump" style="width:90px; height:90px; background: rgba(255,0,0,0.5);">JUMP</div>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
 
+let currentLevel = 1;
 let coins = 0;
 let cameraX = 0;
-let win = false;
+let isWinnning = false;
+let isUnderground = false;
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
 
 const player = {
-    x: 100, y: 100, w: 35, h: 50,
-    vx: 0, vy: 0, speed: 6, jump: -16,
+    x: 50, y: 100, w: 35, h: 50,
+    vx: 0, vy: 0, speed: 6, jump: -17,
     grounded: false
 };
 
-const platforms = [
-    {x: 0, y: canvas.height - 60, w: 1200, h: 60, type: 'ground'},
-    {x: 400, y: canvas.height - 200, w: 40, h: 40, type: 'block', hit: false},
-    {x: 440, y: canvas.height - 200, w: 40, h: 40, type: 'brick'},
-    {x: 480, y: canvas.height - 200, w: 40, h: 40, type: 'block', hit: false},
-    
-    // PIPA PADAT (TIDAK NEMBUS)
-    {x: 700, y: canvas.height - 160, w: 80, h: 100, type: 'pipe'},
-    {x: 1000, y: canvas.height - 220, w: 80, h: 160, type: 'pipe'},
-    
-    // JURANG & LANTAI 2
-    {x: 1350, y: canvas.height - 60, w: 600, h: 60, type: 'ground'},
-    {x: 1500, y: canvas.height - 220, w: 150, h: 30, type: 'brick'},
-    
-    // TANGGA FINISH
-    {x: 2100, y: canvas.height - 100, w: 50, h: 40, type: 'brick'},
-    {x: 2150, y: canvas.height - 140, w: 50, h: 80, type: 'brick'},
-    {x: 2200, y: canvas.height - 180, w: 50, h: 120, type: 'brick'},
-    {x: 2250, y: canvas.height - 220, w: 50, h: 160, type: 'brick'},
-    
-    {x: 2450, y: canvas.height - 60, w: 800, h: 60, type: 'ground'},
-    {x: 3000, y: canvas.height - 360, w: 10, h: 300, type: 'finish'}
-];
+let platforms = [];
+let items = [];
+let enemies = [];
 
+function buildLevel(lvl) {
+    platforms = []; items = []; enemies = [];
+    player.x = 50; player.y = 100; cameraX = 0; isUnderground = false;
+    document.body.style.background = "#5c94fc";
+
+    // Tanah Utama
+    for(let i=0; i<5000; i+=600) {
+        platforms.push({x: i, y: canvas.height-60, w: 450, h: 60, type: 'ground'});
+    }
+
+    // Tambah Koin Melayang
+    for(let i=500; i<4000; i+=300) {
+        items.push({x: i, y: canvas.height-200, w: 20, h: 20, type: 'coin', collected: false});
+    }
+
+    // Platform Bergerak (Naik Turun)
+    platforms.push({x: 1200, y: canvas.height-200, w: 100, h: 20, type: 'moving', baseAt: canvas.height-200, range: 100, speed: 0.05});
+
+    // Pipa Rahasia (Bisa Masuk Bawah Tanah)
+    platforms.push({x: 800, y: canvas.height-140, w: 80, h: 80, type: 'pipe', canEnter: true});
+
+    // Istana Finish
+    platforms.push({x: 4500, y: canvas.height-310, w: 250, h: 250, type: 'castle'});
+}
+
+// Kontrol
 const keys = {};
+let tL=0, tR=0, tJ=0, tD=0;
+document.getElementById('btn-left').ontouchstart = () => tL=1; document.getElementById('btn-left').ontouchend = () => tL=0;
+document.getElementById('btn-right').ontouchstart = () => tR=1; document.getElementById('btn-right').ontouchend = () => tR=0;
+document.getElementById('btn-jump').ontouchstart = () => tJ=1; document.getElementById('btn-jump').ontouchend = () => tJ=0;
+document.getElementById('btn-down').ontouchstart = () => tD=1; document.getElementById('btn-down').ontouchend = () => tD=0;
+
+function enterUnderground() {
+    isUnderground = true;
+    document.body.style.background = "#000";
+    player.x = 100; player.y = 50;
+    platforms = [
+        {x: 0, y: canvas.height-60, w: 2000, h: 60, type: 'ground'},
+        {x: 1500, y: canvas.height-140, w: 80, h: 80, type: 'pipe', exit: true}
+    ];
+    items = [];
+    for(let i=200; i<1400; i+=100) items.push({x: i, y: canvas.height-150, w: 20, h: 20, type: 'coin', collected: false});
+}
 
 function update() {
-    if (win) return;
-
-    // Gerak Horizontal
-    player.vx = 0;
-    if (keys["ArrowRight"]) player.vx = player.speed;
-    if (keys["ArrowLeft"]) player.vx = -player.speed;
-
-    // Gravitasi
+    if(isWinnning) return;
+    
+    player.vx = (keys["ArrowRight"] || tR) ? player.speed : (keys["ArrowLeft"] || tL) ? -player.speed : 0;
     player.vy += 0.8;
 
-    // --- LOGIKA TABRAKAN ---
-    
-    // 1. Cek Gerak Horizontal (X)
-    player.x += player.vx;
+    // Gerak Platform
     platforms.forEach(p => {
-        if (player.x < p.x + p.w && player.x + player.w > p.x &&
-            player.y < p.y + p.h && player.y + player.h > p.y) {
-            
-            if (p.type === 'finish') { win = true; document.getElementById('msg').style.display='block'; return; }
-            
-            if (player.vx > 0) player.x = p.x - player.w; // Mentok Kanan
-            else if (player.vx < 0) player.x = p.x + p.w; // Mentok Kiri
+        if(p.type === 'moving') {
+            p.y = p.baseAt + Math.sin(Date.now() * p.speed * 0.1) * p.range;
         }
     });
 
-    // 2. Cek Gerak Vertikal (Y)
+    // Collision Logic
+    player.x += player.vx;
+    platforms.forEach(p => {
+        if(player.x < p.x+p.w && player.x+player.w > p.x && player.y < p.y+p.h && player.y+player.h > p.y) {
+            if(p.type === 'castle') { win(); return; }
+            if(p.canEnter && (keys["ArrowDown"] || tD)) { enterUnderground(); return; }
+            if(p.exit && (keys["ArrowDown"] || tD)) { buildLevel(currentLevel); return; }
+            if(player.vx > 0) player.x = p.x - player.w; else player.x = p.x + p.w;
+        }
+    });
+
     player.grounded = false;
     player.y += player.vy;
     platforms.forEach(p => {
-        if (player.x < p.x + p.w && player.x + player.w > p.x &&
-            player.y < p.y + p.h && player.y + player.h > p.y) {
-            
-            if (p.type === 'finish') return;
-
-            if (player.vy > 0) { // Jatuh/Napak
-                player.y = p.y - player.h;
-                player.vy = 0;
-                player.grounded = true;
-            } else if (player.vy < 0) { // Sundul Atas
-                player.y = p.y + p.h;
-                player.vy = 1;
-                if (p.type === 'block' && !p.hit) {
-                    p.hit = true; coins++;
-                    document.getElementById('coins').innerText = coins;
-                }
-            }
+        if(player.x < p.x+p.w && player.x+player.w > p.x && player.y < p.y+p.h && player.y+player.h > p.y) {
+            if(p.type === 'castle') return;
+            if(player.vy > 0) { player.y = p.y - player.h; player.vy = 0; player.grounded = true; }
+            else { player.y = p.y + p.h; player.vy = 2; }
         }
     });
 
-    // --- TOMBOL LOMPAT (SPASI / ATAS) ---
-    if ((keys[" "] || keys["ArrowUp"]) && player.grounded) {
-        player.vy = player.jump;
-        player.grounded = false;
-    }
+    // Ambil Koin
+    items.forEach(c => {
+        if(!c.collected && player.x < c.x+c.w && player.x+player.w > c.x && player.y < c.y+c.h && player.y+player.h > c.y) {
+            c.collected = true; coins++; document.getElementById('cns').innerText = coins;
+        }
+    });
 
-    // Kamera & Mati Jatuh
-    cameraX = player.x - canvas.width / 3;
-    if (player.y > canvas.height) { 
-        player.x = 100; player.y = 100; player.vy = 0; 
-    }
-
+    if((keys["ArrowUp"] || keys[" "] || tJ) && player.grounded) player.vy = player.jump;
+    cameraX = player.x - canvas.width/4;
+    if(player.y > canvas.height) { player.x=50; player.y=100; }
+    
     draw();
     requestAnimationFrame(update);
 }
 
+function win() {
+    isWinnning = true; document.getElementById('win-screen').style.display='block';
+    setTimeout(() => { 
+        currentLevel++; buildLevel(currentLevel); 
+        document.getElementById('lvl').innerText=currentLevel;
+        isWinnning=false; document.getElementById('win-screen').style.display='none';
+    }, 3000);
+}
+
 function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.translate(-cameraX, 0);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.save(); ctx.translate(-cameraX, 0);
 
     platforms.forEach(p => {
-        if (p.type === 'ground') ctx.fillStyle = "#70483c";
-        else if (p.type === 'pipe') ctx.fillStyle = "#32cd32";
-        else if (p.type === 'block') ctx.fillStyle = p.hit ? "#555" : "#ffcc33";
-        else if (p.type === 'finish') ctx.fillStyle = "white";
-        else ctx.fillStyle = "#a52a2a";
-        
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.strokeStyle = "black";
-        ctx.strokeRect(p.x, p.y, p.w, p.h);
-
-        if(p.type === 'finish') {
-            ctx.fillStyle = "red"; ctx.fillRect(p.x - 40, p.y, 40, 40);
-        }
+        if(p.type === 'ground') { ctx.fillStyle = "#70483c"; ctx.fillRect(p.x, p.y, p.w, p.h); ctx.fillStyle="#3cb043"; ctx.fillRect(p.x,p.y,p.w,10); }
+        else if(p.type === 'pipe') { ctx.fillStyle = "#32cd32"; ctx.fillRect(p.x, p.y, p.w, p.h); ctx.strokeRect(p.x, p.y, p.w, p.h); }
+        else if(p.type === 'castle') { ctx.fillStyle = "#444"; ctx.fillRect(p.x, p.y, p.w, p.h); ctx.fillStyle="black"; ctx.fillRect(p.x+100, p.y+150, 50, 100); }
+        else { ctx.fillStyle="#ffcc33"; ctx.fillRect(p.x,p.y,p.w,p.h); }
     });
 
-    // MARIO
-    ctx.fillStyle = "red"; ctx.fillRect(player.x, player.y, player.w, 30);
-    ctx.fillStyle = "blue"; ctx.fillRect(player.x, player.y + 30, player.w, 20);
-    ctx.fillStyle = "#ffcc99"; ctx.fillRect(player.x + 10, player.y + 5, 20, 20);
-    ctx.fillStyle = "darkred"; ctx.fillRect(player.x - 5, player.y, player.w + 10, 8);
+    items.forEach(c => {
+        if(!c.collected) { ctx.fillStyle = "gold"; ctx.beginPath(); ctx.arc(c.x+10, c.y+10, 10, 0, Math.PI*2); ctx.fill(); }
+    });
+
+    // Mario Akimmcuy
+    ctx.fillStyle = "red"; ctx.fillRect(player.x, player.y, player.w, 25);
+    ctx.fillStyle = "blue"; ctx.fillRect(player.x, player.y+25, player.w, 25);
+    ctx.fillStyle = "#ffcc99"; ctx.fillRect(player.x+10, player.y+5, 20, 15);
 
     ctx.restore();
 }
 
-window.addEventListener("keydown", e => { keys[e.key] = true; });
-window.addEventListener("keyup", e => { keys[e.key] = false; });
-update();
+window.addEventListener("keydown", e => keys[e.key] = true);
+window.addEventListener("keyup", e => keys[e.key] = false);
+buildLevel(1); update();
 </script>
 </body>
 </html>
