@@ -2,17 +2,27 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Slendrina Home - Akimmcuy Laptop & HP</title>
+    <title>Slendrina Home - Akimmcuy</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; touch-action: none; }
         #ui { position: absolute; top: 15px; left: 15px; color: #f00; font-weight: bold; font-size: 20px; z-index: 10; text-shadow: 2px 2px #000; }
+        
+        /* TAMPILAN JUMPSCARE */
         #jumpscare { 
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
-            background: radial-gradient(circle, #300 0%, #000 100%);
-            display: none; z-index: 100; align-items: center; justify-content: center;
+            background: #000; display: none; z-index: 1000; align-items: center; justify-content: center;
         }
-        #jumpscare img { width: 300px; filter: grayscale(1) contrast(2); }
-        .controls-hint { position: absolute; bottom: 10px; right: 10px; color: #555; font-size: 12px; pointer-events: none; }
+        #jumpscare img { 
+            width: 100%; height: 100%; object-fit: cover;
+            animation: shake 0.1s infinite; /* Layar bergetar pas jumpscare */
+        }
+
+        @keyframes shake {
+            0% { transform: translate(5px, 5px); }
+            50% { transform: translate(-5px, -5px); }
+            100% { transform: translate(5px, -5px); }
+        }
+
         #joystick-area { position: absolute; bottom: 40px; left: 40px; width: 100px; height: 100px; background: rgba(255,255,255,0.05); border-radius: 50%; border: 1px solid #222; }
         #joystick-stick { position: absolute; width: 40px; height: 40px; background: rgba(255,0,0,0.2); border-radius: 50%; top: 30px; left: 30px; }
     </style>
@@ -20,9 +30,12 @@
 <body>
 
 <div id="ui">BOOKS: <span id="books">0</span> / 8</div>
-<div id="jumpscare"><h1 style="color:white; font-size:100px;">💀</h1></div>
+
+<div id="jumpscare">
+    <img src="https://api.readyplayer.me/v1/avatars/65268c78b6631481f3d89d6e.png?expression=scared" id="scary-face">
+</div>
+
 <div id="joystick-area"><div id="joystick-stick"></div></div>
-<div class="controls-hint">Laptop: WASD / Panah | HP: Joystick</div>
 
 <canvas id="gameCanvas"></canvas>
 
@@ -35,72 +48,57 @@ const jumpscareEl = document.getElementById("jumpscare");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// Map Rumah (1: Tembok, 0: Lantai)
+// Efek Suara Teriakan (Menggunakan Oscillator karena file mp3 sering diblokir browser)
+function playScream() {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.type = 'sawtooth'; // Suara kasar kayak teriakan
+    oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.5);
+    
+    gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.5);
+}
+
 const map = [
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
-    [1,0,1,0,1,0,1,1,1,0,1,0,1,1,1,1,1,1,0,1],
-    [1,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1],
-    [1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,0,1,1],
-    [1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,1],
-    [1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,0,1,1,0,1],
-    [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
-    [1,0,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,1],
-    [1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+    [1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,1,0,0,0,0,0,0,1],
+    [1,0,1,0,1,0,1,1,1,1,0,1],
+    [1,0,0,0,0,0,0,0,0,1,0,1],
+    [1,1,1,1,1,0,1,1,0,0,0,1],
+    [1,0,0,0,0,0,1,0,0,1,1,1],
+    [1,0,1,1,1,1,1,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,1,1,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1]
 ];
 
 const tileSize = 80;
 let player = { x: 120, y: 120, speed: 4, books: 0 };
 let slendrina = { x: 0, y: 0, active: false, timer: 0 };
-let books = [
-    {x: 760, y: 120}, {x: 1480, y: 120}, {x: 1480, y: 760}, {x: 120, y: 760},
-    {x: 760, y: 440}, {x: 1000, y: 440}, {x: 120, y: 440}, {x: 440, y: 760}
-];
+let books = [{x:760, y:120}, {x:120, y:600}, {x:440, y:360}, {x:840, y:600}, {x:200, y:360}];
 
-// Kontrol Keyboard (Laptop)
 let keys = {};
 window.addEventListener("keydown", e => keys[e.code] = true);
 window.addEventListener("keyup", e => keys[e.code] = false);
 
-// Kontrol Joystick (HP)
-let joystick = { active: false, dx: 0, dy: 0 };
-window.addEventListener("touchstart", e => { joystick.active = true; });
-window.addEventListener("touchmove", e => {
-    if(!joystick.active) return;
-    const t = e.touches[0];
-    const r = document.getElementById("joystick-area").getBoundingClientRect();
-    const dx = t.clientX - (r.left + 50);
-    const dy = t.clientY - (r.top + 50);
-    const dist = Math.hypot(dx, dy);
-    joystick.dx = dx/dist;
-    joystick.dy = dy/dist;
-    document.getElementById("joystick-stick").style.transform = `translate(${joystick.dx*30}px, ${joystick.dy*30}px)`;
-});
-window.addEventListener("touchend", () => { 
-    joystick.active = false; joystick.dx = 0; joystick.dy = 0;
-    document.getElementById("joystick-stick").style.transform = `translate(0,0)`;
-});
-
 function update() {
     let dx = 0, dy = 0;
-    // Cek Input Laptop
     if(keys['ArrowUp'] || keys['KeyW']) dy = -player.speed;
     if(keys['ArrowDown'] || keys['KeyS']) dy = player.speed;
     if(keys['ArrowLeft'] || keys['KeyA']) dx = -player.speed;
     if(keys['ArrowRight'] || keys['KeyD']) dx = player.speed;
-    
-    // Cek Input HP
-    if(joystick.active) {
-        dx = joystick.dx * player.speed;
-        dy = joystick.dy * player.speed;
-    }
 
-    // Collision Detection (Tembok)
     if (map[Math.floor(player.y / tileSize)][Math.floor((player.x + dx) / tileSize)] === 0) player.x += dx;
     if (map[Math.floor((player.y + dy) / tileSize)][Math.floor(player.x / tileSize)] === 0) player.y += dy;
 
-    // Ambil Buku
     books.forEach((b, i) => {
         if(Math.hypot(player.x - b.x, player.y - b.y) < 40) {
             books.splice(i, 1);
@@ -109,81 +107,65 @@ function update() {
         }
     });
 
-    // Slendrina Logic
+    // Munculin Slendrina
     slendrina.timer++;
-    if(slendrina.timer > 400) {
+    if(slendrina.timer > 300) {
         if(!slendrina.active) {
             slendrina.active = true;
-            slendrina.x = player.x + (Math.random() - 0.5) * 300;
-            slendrina.y = player.y + (Math.random() - 0.5) * 300;
+            slendrina.x = player.x + (Math.random() - 0.5) * 200;
+            slendrina.y = player.y + (Math.random() - 0.5) * 200;
         }
-        if(Math.hypot(player.x - slendrina.x, player.y - slendrina.y) < 100) {
-            jumpscare();
+        if(Math.hypot(player.x - slendrina.x, player.y - slendrina.y) < 80) {
+            triggerJumpscare();
         }
-        if(slendrina.timer > 550) { slendrina.active = false; slendrina.timer = 0; }
+        if(slendrina.timer > 400) { slendrina.active = false; slendrina.timer = 0; }
     }
 
     draw();
     requestAnimationFrame(update);
 }
 
-function jumpscare() {
+function triggerJumpscare() {
     jumpscareEl.style.display = "flex";
+    playScream(); // PANGGIL SUARA TERIAKAN
     setTimeout(() => {
         jumpscareEl.style.display = "none";
         player.x = 120; player.y = 120;
         slendrina.active = false; slendrina.timer = -200;
-    }, 1200);
+    }, 1000);
 }
 
 function draw() {
-    ctx.fillStyle = "#050505";
+    ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     ctx.save();
     ctx.translate(canvas.width/2 - player.x, canvas.height/2 - player.y);
 
-    // Gambar Lantai Rumah & Tembok
     for(let y=0; y<map.length; y++) {
         for(let x=0; x<map[y].length; x++) {
             if(map[y][x] === 1) {
-                ctx.fillStyle = "#2c1a10"; // Warna kayu gelap
-                ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize);
-                ctx.strokeStyle = "#111"; ctx.strokeRect(x*tileSize, y*tileSize, tileSize, tileSize);
-            } else {
-                ctx.fillStyle = "#1a1a1a"; // Lantai beton gelap
+                ctx.fillStyle = "#222";
                 ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize);
             }
         }
     }
 
-    // Gambar Buku (Warna Merah sekarang biar serem)
-    books.forEach(b => {
-        ctx.fillStyle = "#f00"; ctx.fillRect(b.x - 15, b.y - 20, 30, 40);
-        ctx.fillStyle = "#fff"; ctx.fillRect(b.x - 10, b.y - 15, 20, 2);
-    });
+    ctx.fillStyle = "red";
+    books.forEach(b => ctx.fillRect(b.x-10, b.y-10, 20, 20));
 
-    // Gambar Slendrina (Penampakan)
     if(slendrina.active) {
-        ctx.fillStyle = "rgba(200, 200, 200, 0.4)";
-        ctx.beginPath(); ctx.arc(slendrina.x, slendrina.y, 25, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = "black";
-        ctx.beginPath(); ctx.arc(slendrina.x-8, slendrina.y-5, 5, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(slendrina.x+8, slendrina.y-5, 5, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "white";
+        ctx.beginPath(); ctx.arc(slendrina.x, slendrina.y, 20, 0, Math.PI*2); ctx.fill();
     }
 
     ctx.restore();
 
-    // SENTER (Daya lihat terbatas)
-    const shadow = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 30, canvas.width/2, canvas.height/2, 220);
+    // SENTER
+    const shadow = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 20, canvas.width/2, canvas.height/2, 180);
     shadow.addColorStop(0, "transparent");
     shadow.addColorStop(1, "black");
     ctx.fillStyle = shadow;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Karakter (Titik Putih Kecil)
-    ctx.fillStyle = "white";
-    ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 6, 0, Math.PI*2); ctx.fill();
 }
 
 update();
