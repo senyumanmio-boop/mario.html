@@ -2,26 +2,27 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Slendrina: Akimmcuy's Nightmare</title>
+    <title>Slendrina Home - Akimmcuy Laptop & HP</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; touch-action: none; }
-        #ui { position: absolute; top: 10px; left: 10px; color: #f00; font-weight: bold; z-index: 10; }
+        #ui { position: absolute; top: 15px; left: 15px; color: #f00; font-weight: bold; font-size: 20px; z-index: 10; text-shadow: 2px 2px #000; }
         #jumpscare { 
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
-            background: url('https://i.imgur.com/vS3vN0S.png') center/cover; /* Placeholder muka serem */
-            background-color: black; display: none; z-index: 100;
+            background: radial-gradient(circle, #300 0%, #000 100%);
+            display: none; z-index: 100; align-items: center; justify-content: center;
         }
-        #joystick-area { position: absolute; bottom: 40px; left: 40px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 1px solid #333; }
-        #joystick-stick { position: absolute; width: 40px; height: 40px; background: rgba(255,0,0,0.3); border-radius: 50%; top: 30px; left: 30px; }
-        #msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-align: center; display: none; background: rgba(0,0,0,0.8); padding: 20px; border: 1px solid red; }
+        #jumpscare img { width: 300px; filter: grayscale(1) contrast(2); }
+        .controls-hint { position: absolute; bottom: 10px; right: 10px; color: #555; font-size: 12px; pointer-events: none; }
+        #joystick-area { position: absolute; bottom: 40px; left: 40px; width: 100px; height: 100px; background: rgba(255,255,255,0.05); border-radius: 50%; border: 1px solid #222; }
+        #joystick-stick { position: absolute; width: 40px; height: 40px; background: rgba(255,0,0,0.2); border-radius: 50%; top: 30px; left: 30px; }
     </style>
 </head>
 <body>
 
 <div id="ui">BOOKS: <span id="books">0</span> / 8</div>
-<div id="jumpscare"></div>
+<div id="jumpscare"><h1 style="color:white; font-size:100px;">💀</h1></div>
 <div id="joystick-area"><div id="joystick-stick"></div></div>
-<div id="msg"></div>
+<div class="controls-hint">Laptop: WASD / Panah | HP: Joystick</div>
 
 <canvas id="gameCanvas"></canvas>
 
@@ -30,38 +31,42 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const booksEl = document.getElementById("books");
 const jumpscareEl = document.getElementById("jumpscare");
-const msgEl = document.getElementById("msg");
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// Map Labirin (1 = Tembok, 0 = Jalan, B = Buku)
+// Map Rumah (1: Tembok, 0: Lantai)
 const map = [
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
-    [1,0,1,0,1,0,1,1,1,0,1,1,1,0,1],
-    [1,0,1,0,0,0,0,0,1,0,0,0,1,0,1],
-    [1,0,1,1,1,1,1,0,1,1,1,0,1,0,1],
-    [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1],
-    [1,1,1,1,1,0,1,1,1,0,1,1,1,1,1],
-    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-    [1,0,1,1,1,0,1,1,1,0,1,1,1,0,1],
-    [1,0,0,0,1,0,0,0,1,0,1,0,0,0,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+    [1,0,1,0,1,0,1,1,1,0,1,0,1,1,1,1,1,1,0,1],
+    [1,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1],
+    [1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,0,1,1],
+    [1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,1],
+    [1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,0,1,1,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+    [1,0,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,1],
+    [1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ];
 
-const tileSize = 60;
-let player = { x: 90, y: 90, angle: 0, speed: 2, books: 0 };
+const tileSize = 80;
+let player = { x: 120, y: 120, speed: 4, books: 0 };
 let slendrina = { x: 0, y: 0, active: false, timer: 0 };
 let books = [
-    {x: 450, y: 90}, {x: 750, y: 210}, {x: 150, y: 510}, {x: 570, y: 450},
-    {x: 810, y: 570}, {x: 90, y: 570}, {x: 450, y: 330}, {x: 750, y: 450}
+    {x: 760, y: 120}, {x: 1480, y: 120}, {x: 1480, y: 760}, {x: 120, y: 760},
+    {x: 760, y: 440}, {x: 1000, y: 440}, {x: 120, y: 440}, {x: 440, y: 760}
 ];
 
-// Joystick
+// Kontrol Keyboard (Laptop)
+let keys = {};
+window.addEventListener("keydown", e => keys[e.code] = true);
+window.addEventListener("keyup", e => keys[e.code] = false);
+
+// Kontrol Joystick (HP)
 let joystick = { active: false, dx: 0, dy: 0 };
-window.addEventListener("touchstart", (e) => { joystick.active = true; });
-window.addEventListener("touchmove", (e) => {
+window.addEventListener("touchstart", e => { joystick.active = true; });
+window.addEventListener("touchmove", e => {
     if(!joystick.active) return;
     const t = e.touches[0];
     const r = document.getElementById("joystick-area").getBoundingClientRect();
@@ -73,53 +78,49 @@ window.addEventListener("touchmove", (e) => {
     document.getElementById("joystick-stick").style.transform = `translate(${joystick.dx*30}px, ${joystick.dy*30}px)`;
 });
 window.addEventListener("touchend", () => { 
-    joystick.active = false; 
-    joystick.dx = 0; joystick.dy = 0;
+    joystick.active = false; joystick.dx = 0; joystick.dy = 0;
     document.getElementById("joystick-stick").style.transform = `translate(0,0)`;
 });
 
 function update() {
-    // Movement & Collision
-    let nextX = player.x + joystick.dx * player.speed;
-    let nextY = player.y + joystick.dy * player.speed;
+    let dx = 0, dy = 0;
+    // Cek Input Laptop
+    if(keys['ArrowUp'] || keys['KeyW']) dy = -player.speed;
+    if(keys['ArrowDown'] || keys['KeyS']) dy = player.speed;
+    if(keys['ArrowLeft'] || keys['KeyA']) dx = -player.speed;
+    if(keys['ArrowRight'] || keys['KeyD']) dx = player.speed;
     
-    let gridX = Math.floor(nextX / tileSize);
-    let gridY = Math.floor(nextY / tileSize);
-    
-    if (map[gridY][gridX] === 0) {
-        player.x = nextX;
-        player.y = nextY;
+    // Cek Input HP
+    if(joystick.active) {
+        dx = joystick.dx * player.speed;
+        dy = joystick.dy * player.speed;
     }
+
+    // Collision Detection (Tembok)
+    if (map[Math.floor(player.y / tileSize)][Math.floor((player.x + dx) / tileSize)] === 0) player.x += dx;
+    if (map[Math.floor((player.y + dy) / tileSize)][Math.floor(player.x / tileSize)] === 0) player.y += dy;
 
     // Ambil Buku
     books.forEach((b, i) => {
-        if(Math.hypot(player.x - b.x, player.y - b.y) < 30) {
+        if(Math.hypot(player.x - b.x, player.y - b.y) < 40) {
             books.splice(i, 1);
             player.books++;
             booksEl.innerText = player.books;
-            if(player.books === 8) win();
         }
     });
 
-    // Logika Slendrina
+    // Slendrina Logic
     slendrina.timer++;
-    if(slendrina.timer > 300) { // Muncul setiap beberapa detik
+    if(slendrina.timer > 400) {
         if(!slendrina.active) {
             slendrina.active = true;
-            slendrina.x = player.x + (Math.random() - 0.5) * 200;
-            slendrina.y = player.y + (Math.random() - 0.5) * 200;
+            slendrina.x = player.x + (Math.random() - 0.5) * 300;
+            slendrina.y = player.y + (Math.random() - 0.5) * 300;
         }
-        
-        // Cek kalau player lihat Slendrina (jarak dekat)
-        let dist = Math.hypot(player.x - slendrina.x, player.y - slendrina.y);
-        if(dist < 80) {
+        if(Math.hypot(player.x - slendrina.x, player.y - slendrina.y) < 100) {
             jumpscare();
         }
-
-        if(slendrina.timer > 450) {
-            slendrina.active = false;
-            slendrina.timer = 0;
-        }
+        if(slendrina.timer > 550) { slendrina.active = false; slendrina.timer = 0; }
     }
 
     draw();
@@ -127,71 +128,62 @@ function update() {
 }
 
 function jumpscare() {
-    jumpscareEl.style.display = "block";
+    jumpscareEl.style.display = "flex";
     setTimeout(() => {
         jumpscareEl.style.display = "none";
-        player.x = 90; player.y = 90; // Reset posisi
-        slendrina.active = false;
-        slendrina.timer = -200;
-    }, 1000);
-}
-
-function win() {
-    msgEl.style.display = "block";
-    msgEl.innerHTML = "<h1>KAMU LOLOS!</h1><p>Akimmcuy berhasil keluar dari kegelapan.</p>";
+        player.x = 120; player.y = 120;
+        slendrina.active = false; slendrina.timer = -200;
+    }, 1200);
 }
 
 function draw() {
-    ctx.fillStyle = "black";
+    ctx.fillStyle = "#050505";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
     ctx.translate(canvas.width/2 - player.x, canvas.height/2 - player.y);
 
-    // Draw Map
+    // Gambar Lantai Rumah & Tembok
     for(let y=0; y<map.length; y++) {
         for(let x=0; x<map[y].length; x++) {
             if(map[y][x] === 1) {
-                ctx.fillStyle = "#111";
+                ctx.fillStyle = "#2c1a10"; // Warna kayu gelap
                 ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize);
-                ctx.strokeStyle = "#222";
-                ctx.strokeRect(x*tileSize, y*tileSize, tileSize, tileSize);
+                ctx.strokeStyle = "#111"; ctx.strokeRect(x*tileSize, y*tileSize, tileSize, tileSize);
+            } else {
+                ctx.fillStyle = "#1a1a1a"; // Lantai beton gelap
+                ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize);
             }
         }
     }
 
-    // Draw Books
-    ctx.fillStyle = "blue";
+    // Gambar Buku (Warna Merah sekarang biar serem)
     books.forEach(b => {
-        ctx.fillRect(b.x - 10, b.y - 15, 20, 30);
-        ctx.fillStyle = "white"; ctx.fillRect(b.x - 8, b.y - 10, 16, 2);
-        ctx.fillStyle = "blue";
+        ctx.fillStyle = "#f00"; ctx.fillRect(b.x - 15, b.y - 20, 30, 40);
+        ctx.fillStyle = "#fff"; ctx.fillRect(b.x - 10, b.y - 15, 20, 2);
     });
 
-    // Draw Slendrina (Hantu Putih)
+    // Gambar Slendrina (Penampakan)
     if(slendrina.active) {
-        ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
-        ctx.beginPath();
-        ctx.arc(slendrina.x, slendrina.y, 20, 0, Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle = "black"; // Mata
-        ctx.fillRect(slendrina.x-8, slendrina.y-5, 4, 4);
-        ctx.fillRect(slendrina.x+4, slendrina.y-5, 4, 4);
+        ctx.fillStyle = "rgba(200, 200, 200, 0.4)";
+        ctx.beginPath(); ctx.arc(slendrina.x, slendrina.y, 25, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "black";
+        ctx.beginPath(); ctx.arc(slendrina.x-8, slendrina.y-5, 5, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(slendrina.x+8, slendrina.y-5, 5, 0, Math.PI*2); ctx.fill();
     }
 
-    // Draw Player (Senter/Lampu)
     ctx.restore();
 
-    // Efek Senter (Vignette)
-    const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 50, canvas.width/2, canvas.height/2, 200);
-    gradient.addColorStop(0, "transparent");
-    gradient.addColorStop(1, "black");
-    ctx.fillStyle = gradient;
+    // SENTER (Daya lihat terbatas)
+    const shadow = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 30, canvas.width/2, canvas.height/2, 220);
+    shadow.addColorStop(0, "transparent");
+    shadow.addColorStop(1, "black");
+    ctx.fillStyle = shadow;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Titik Player
+    // Karakter (Titik Putih Kecil)
     ctx.fillStyle = "white";
-    ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 6, 0, Math.PI*2); ctx.fill();
 }
 
 update();
