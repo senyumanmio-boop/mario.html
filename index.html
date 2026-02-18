@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Super Akimmcuy - Solid Wall Edition</title>
+    <title>Super Akimmcuy - Fix Jump & Solid</title>
     <style>
         body { margin: 0; overflow: hidden; background: #5c94fc; font-family: 'Arial Black', sans-serif; }
         #hud { position: absolute; top: 20px; left: 20px; color: white; text-shadow: 2px 2px #000; font-size: 20px; z-index: 100; }
-        #msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: yellow; font-size: 50px; text-shadow: 5px 5px #000; display: none; z-index: 100; }
+        #msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: yellow; font-size: 50px; text-shadow: 5px 5px #000; display: none; z-index: 100; text-align: center; }
     </style>
 </head>
 <body>
     <div id="hud">MARIO AKIMMCUYY | COINS: <span id="coins">0</span></div>
-    <div id="msg">TAMAT! 🏆</div>
+    <div id="msg">TAMAT! 🏆<br><span style="font-size:20px">Gokil Lu Bos!</span></div>
     <canvas id="gameCanvas"></canvas>
 
 <script>
@@ -29,29 +29,28 @@ const player = {
     grounded: false
 };
 
-// --- LEVEL DESIGN: RINTANGAN SUSAH ---
 const platforms = [
-    {x: 0, y: canvas.height - 60, w: 1000, h: 60, type: 'ground'},
+    {x: 0, y: canvas.height - 60, w: 1200, h: 60, type: 'ground'},
     {x: 400, y: canvas.height - 200, w: 40, h: 40, type: 'block', hit: false},
     {x: 440, y: canvas.height - 200, w: 40, h: 40, type: 'brick'},
     {x: 480, y: canvas.height - 200, w: 40, h: 40, type: 'block', hit: false},
     
-    // PIPA PADAT (Tembok)
+    // PIPA PADAT (TIDAK NEMBUS)
     {x: 700, y: canvas.height - 160, w: 80, h: 100, type: 'pipe'},
-    {x: 950, y: canvas.height - 210, w: 80, h: 150, type: 'pipe'},
+    {x: 1000, y: canvas.height - 220, w: 80, h: 160, type: 'pipe'},
     
     // JURANG & LANTAI 2
-    {x: 1200, y: canvas.height - 60, w: 600, h: 60, type: 'ground'},
-    {x: 1400, y: canvas.height - 200, w: 150, h: 30, type: 'brick'},
+    {x: 1350, y: canvas.height - 60, w: 600, h: 60, type: 'ground'},
+    {x: 1500, y: canvas.height - 220, w: 150, h: 30, type: 'brick'},
     
-    // TANGGA MAUT (Sangat Solid)
-    {x: 1900, y: canvas.height - 100, w: 50, h: 40, type: 'brick'},
-    {x: 1950, y: canvas.height - 140, w: 50, h: 80, type: 'brick'},
-    {x: 2000, y: canvas.height - 180, w: 50, h: 120, type: 'brick'},
-    {x: 2050, y: canvas.height - 220, w: 50, h: 160, type: 'brick'},
+    // TANGGA FINISH
+    {x: 2100, y: canvas.height - 100, w: 50, h: 40, type: 'brick'},
+    {x: 2150, y: canvas.height - 140, w: 50, h: 80, type: 'brick'},
+    {x: 2200, y: canvas.height - 180, w: 50, h: 120, type: 'brick'},
+    {x: 2250, y: canvas.height - 220, w: 50, h: 160, type: 'brick'},
     
-    {x: 2250, y: canvas.height - 60, w: 800, h: 60, type: 'ground'},
-    {x: 2800, y: canvas.height - 360, w: 10, h: 300, type: 'finish'}
+    {x: 2450, y: canvas.height - 60, w: 800, h: 60, type: 'ground'},
+    {x: 3000, y: canvas.height - 360, w: 10, h: 300, type: 'finish'}
 ];
 
 const keys = {};
@@ -59,7 +58,7 @@ const keys = {};
 function update() {
     if (win) return;
 
-    // Reset Velocity Horizontal
+    // Gerak Horizontal
     player.vx = 0;
     if (keys["ArrowRight"]) player.vx = player.speed;
     if (keys["ArrowLeft"]) player.vx = -player.speed;
@@ -67,9 +66,9 @@ function update() {
     // Gravitasi
     player.vy += 0.8;
 
-    // --- COLLISION LOGIC KERAS ---
+    // --- LOGIKA TABRAKAN ---
     
-    // 1. Cek Sumbu X (Nabrak Samping)
+    // 1. Cek Gerak Horizontal (X)
     player.x += player.vx;
     platforms.forEach(p => {
         if (player.x < p.x + p.w && player.x + player.w > p.x &&
@@ -77,15 +76,12 @@ function update() {
             
             if (p.type === 'finish') { win = true; document.getElementById('msg').style.display='block'; return; }
             
-            if (player.vx > 0) { // Nabrak Kanan
-                player.x = p.x - player.w;
-            } else if (player.vx < 0) { // Nabrak Kiri
-                player.x = p.x + p.w;
-            }
+            if (player.vx > 0) player.x = p.x - player.w; // Mentok Kanan
+            else if (player.vx < 0) player.x = p.x + p.w; // Mentok Kiri
         }
     });
 
-    // 2. Cek Sumbu Y (Injek/Sundul)
+    // 2. Cek Gerak Vertikal (Y)
     player.grounded = false;
     player.y += player.vy;
     platforms.forEach(p => {
@@ -94,13 +90,13 @@ function update() {
             
             if (p.type === 'finish') return;
 
-            if (player.vy > 0) { // Jatuh ke Tanah
+            if (player.vy > 0) { // Jatuh/Napak
                 player.y = p.y - player.h;
                 player.vy = 0;
                 player.grounded = true;
             } else if (player.vy < 0) { // Sundul Atas
                 player.y = p.y + p.h;
-                player.vy = 2; // Biar mantul dikit
+                player.vy = 1;
                 if (p.type === 'block' && !p.hit) {
                     p.hit = true; coins++;
                     document.getElementById('coins').innerText = coins;
@@ -109,11 +105,17 @@ function update() {
         }
     });
 
-    if (keys[" "] && player.grounded) player.vy = player.jump;
+    // --- TOMBOL LOMPAT (SPASI / ATAS) ---
+    if ((keys[" "] || keys["ArrowUp"]) && player.grounded) {
+        player.vy = player.jump;
+        player.grounded = false;
+    }
 
-    // Camera & Fall
+    // Kamera & Mati Jatuh
     cameraX = player.x - canvas.width / 3;
-    if (player.y > canvas.height) { player.x = 100; player.y = 100; player.vy = 0; }
+    if (player.y > canvas.height) { 
+        player.x = 100; player.y = 100; player.vy = 0; 
+    }
 
     draw();
     requestAnimationFrame(update);
@@ -124,7 +126,6 @@ function draw() {
     ctx.save();
     ctx.translate(-cameraX, 0);
 
-    // Gambar Platforms
     platforms.forEach(p => {
         if (p.type === 'ground') ctx.fillStyle = "#70483c";
         else if (p.type === 'pipe') ctx.fillStyle = "#32cd32";
@@ -134,7 +135,6 @@ function draw() {
         
         ctx.fillRect(p.x, p.y, p.w, p.h);
         ctx.strokeStyle = "black";
-        ctx.lineWidth = 2;
         ctx.strokeRect(p.x, p.y, p.w, p.h);
 
         if(p.type === 'finish') {
@@ -142,7 +142,7 @@ function draw() {
         }
     });
 
-    // Gambar Mario
+    // MARIO
     ctx.fillStyle = "red"; ctx.fillRect(player.x, player.y, player.w, 30);
     ctx.fillStyle = "blue"; ctx.fillRect(player.x, player.y + 30, player.w, 20);
     ctx.fillStyle = "#ffcc99"; ctx.fillRect(player.x + 10, player.y + 5, 20, 20);
@@ -151,8 +151,8 @@ function draw() {
     ctx.restore();
 }
 
-window.addEventListener("keydown", e => keys[e.key] = true);
-window.addEventListener("keyup", e => keys[e.key] = false);
+window.addEventListener("keydown", e => { keys[e.key] = true; });
+window.addEventListener("keyup", e => { keys[e.key] = false; });
 update();
 </script>
 </body>
