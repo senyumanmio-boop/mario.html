@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Akimmcuy Mario Adventure</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #5c94fc; font-family: Arial, sans-serif; }
+        canvas { display: block; background: #5c94fc; border-bottom: 20px solid #70483c; }
+        #ui { position: absolute; top: 10px; left: 10px; color: white; text-shadow: 2px 2px black; }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h1>SKOR: <span id="score">0</span></h1>
+        <p>Gunakan Panah KIRI / KANAN untuk Jalan, SPASI untuk Lompat!</p>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const scoreEl = document.getElementById("score");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let score = 0;
+
+const player = {
+    x: 100,
+    y: canvas.height - 70,
+    w: 40,
+    h: 50,
+    color: "#ff0000", // Merah Mario
+    dy: 0,
+    jumpForce: 13,
+    gravity: 0.7,
+    speed: 6,
+    grounded: false
+};
+
+const keys = {};
+
+// Objek rintangan (Kotak ?)
+const obstacles = [
+    { x: 500, y: canvas.height - 250, w: 50, h: 50, color: "#ffcc33" },
+    { x: 800, y: canvas.height - 180, w: 50, h: 50, color: "#ffcc33" }
+];
+
+function update() {
+    if (keys["ArrowRight"]) player.x += player.speed;
+    if (keys["ArrowLeft"]) player.x -= player.speed;
+
+    if (keys[" "] && player.grounded) {
+        player.dy = -player.jumpForce;
+        player.grounded = false;
+    }
+
+    player.dy += player.gravity;
+    player.y += player.dy;
+
+    // Batas Tanah
+    if (player.y + player.h >= canvas.height - 20) {
+        player.y = canvas.height - 20 - player.h;
+        player.dy = 0;
+        player.grounded = true;
+    }
+
+    // Gerak Kamera (Skor nambah kalau jalan ke kanan)
+    if (player.x > 300) {
+        score++;
+        scoreEl.innerText = Math.floor(score/10);
+    }
+
+    draw();
+    requestAnimationFrame(update);
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Gambar Awan
+    ctx.fillStyle = "white";
+    ctx.beginPath(); ctx.arc(300, 100, 30, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(340, 100, 40, 0, Math.PI * 2); ctx.fill();
+
+    // Gambar Rintangan
+    obstacles.forEach(obs => {
+        ctx.fillStyle = obs.color;
+        ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+        ctx.strokeStyle = "black";
+        ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
+    });
+
+    // Gambar Mario
+    ctx.fillStyle = player.color;
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+    // Topi
+    ctx.fillStyle = "#a00000";
+    ctx.fillRect(player.x, player.y, player.w, 15);
+    // Mata
+    ctx.fillStyle = "black";
+    ctx.fillRect(player.x + 25, player.y + 20, 5, 5);
+}
+
+window.addEventListener("keydown", (e) => keys[e.key] = true);
+window.addEventListener("keyup", (e) => keys[e.key] = false);
+
+update();
+</script>
+</body>
+</html>
