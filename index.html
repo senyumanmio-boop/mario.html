@@ -1,190 +1,118 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Super Akimmcuy Bros 10 Levels</title>
+    <title>Akimmcuy Kitchen - Mabar Edition</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #5c94fc; font-family: 'Courier New', Courier, monospace; touch-action: manipulation; }
-        #hud { position: absolute; top: 10px; left: 10px; color: white; text-shadow: 2px 2px #000; z-index: 10; font-size: 18px; line-height: 1.5; }
-        /* Kontrol HP */
-        .controls { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: space-between; padding: 0 30px; box-sizing: border-box; z-index: 100; pointer-events: none; }
-        .d-pad, .action-btn { pointer-events: auto; }
-        .btn { width: 70px; height: 70px; background: rgba(0,0,0,0.4); border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; border: 3px solid #fff; font-size: 24px; -webkit-user-select: none; }
-        .btn:active { background: rgba(255,255,255,0.4); }
-        #msg-box { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: black; color: white; padding: 20px; border: 4px solid white; text-align: center; display: none; z-index: 200; }
+        body { margin: 0; overflow: hidden; background: #333; font-family: sans-serif; color: white; user-select: none; }
+        #game-container { display: flex; width: 100vw; height: 100vh; }
+        
+        /* Pembagian Layar Mabar */
+        .player-side { flex: 1; border: 2px solid #555; position: relative; display: flex; flex-direction: column; align-items: center; padding: 10px; }
+        #p1 { background: #4a148c; } /* Warna Player 1 */
+        #p2 { background: #01579b; } /* Warna Player 2 */
+
+        .order-box { background: white; color: black; padding: 10px; border-radius: 10px; font-weight: bold; margin-bottom: 20px; width: 80%; text-align: center; }
+        .plate { width: 120px; height: 120px; border-radius: 50%; background: #eee; display: flex; flex-direction: column-reverse; align-items: center; justify-content: center; margin-top: 20px; border: 5px solid #ccc; }
+        
+        .ingredient { width: 80px; height: 20px; border-radius: 5px; margin: 2px; font-size: 10px; text-align: center; line-height: 20px; font-weight: bold; color: white; }
+        .bun { background: #f4a460; }
+        .meat { background: #8b4513; }
+        .salad { background: #32cd32; }
+
+        .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 90%; margin-top: auto; margin-bottom: 20px; }
+        .btn { padding: 20px 10px; border: none; border-radius: 10px; font-weight: bold; background: #ffd700; color: black; font-size: 12px; }
+        .btn:active { transform: scale(0.9); background: #fff; }
+        
+        #score-board { position: absolute; top: 0; left: 50%; transform: translateX(-50%); background: gold; color: black; padding: 5px 20px; border-radius: 0 0 10px 10px; z-index: 100; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="hud">LEVEL: <span id="lvl">1</span><br>COINS: <span id="cns">0</span></div>
-<div id="msg-box"><h1 id="msg-text">LEVEL CLEAR!</h1></div>
+<div id="score-board">P1: <span id="s1">0</span> | P2: <span id="s2">0</span></div>
 
-<div class="controls">
-    <div class="d-pad" style="display:flex; gap:15px;">
-        <div class="btn" id="left">◀</div>
-        <div class="btn" id="down">▼</div>
-        <div class="btn" id="right">▶</div>
+<div id="game-container">
+    <div class="player-side" id="p1">
+        <h3>PLAYER 1</h3>
+        <div class="order-box">PESANAN:<br><span id="order1">BURGER</span></div>
+        <div class="plate" id="plate1"></div>
+        <div class="buttons">
+            <button class="btn" onclick="addIngredient(1, 'bun')">+ ROTI</button>
+            <button class="btn" onclick="addIngredient(1, 'meat')">+ DAGING</button>
+            <button class="btn" onclick="addIngredient(1, 'salad')">+ SELADA</button>
+            <button class="btn" onclick="serve(1)" style="background:#ff5722; color:white;">SAJIKAN!</button>
+        </div>
     </div>
-    <div class="action-btn">
-        <div class="btn" id="jump" style="width:90px; height:90px; background:rgba(255,0,0,0.5);">JUMP</div>
+
+    <div class="player-side" id="p2">
+        <h3>PLAYER 2</h3>
+        <div class="order-box">PESANAN:<br><span id="order2">BURGER</span></div>
+        <div class="plate" id="plate2"></div>
+        <div class="buttons">
+            <button class="btn" onclick="addIngredient(2, 'bun')">+ ROTI</button>
+            <button class="btn" onclick="addIngredient(2, 'meat')">+ DAGING</button>
+            <button class="btn" onclick="addIngredient(2, 'salad')">+ SELADA</button>
+            <button class="btn" onclick="serve(2)" style="background:#ff5722; color:white;">SAJIKAN!</button>
+        </div>
     </div>
 </div>
 
-<canvas id="gameCanvas"></canvas>
-
 <script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+    let scores = {1: 0, 2: 0};
+    let kitchens = {
+        1: { plate: [], order: ['bun', 'meat', 'salad', 'bun'] },
+        2: { plate: [], order: ['bun', 'meat', 'salad', 'bun'] }
+    };
 
-let level = 1;
-let coins = 0;
-let cameraX = 0;
-let isWinning = false;
-let underground = false;
+    const ingredientNames = {
+        'bun': 'ROTI',
+        'meat': 'DAGING',
+        'salad': 'SELADA'
+    };
 
-function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
-
-const player = { x: 100, y: 100, w: 35, h: 50, vx: 0, vy: 0, speed: 6, jump: -17, grounded: false };
-
-let platforms = [];
-let items = [];
-let enemies = [];
-
-function buildLevel(n) {
-    platforms = []; items = []; enemies = [];
-    player.x = 100; player.y = 100; cameraX = 0; underground = false;
-    document.body.style.background = "#5c94fc";
-
-    // Tanah Utama
-    let worldEnd = 3000 + (n * 1000);
-    for(let i=0; i < worldEnd; i += 600) {
-        platforms.push({x: i, y: canvas.height-60, w: 400, h: 60, type: 'ground'});
-    }
-
-    // Pipa Bawah Tanah (Hanya ada di Level tertentu)
-    platforms.push({x: 700, y: canvas.height-140, w: 80, h: 80, type: 'pipe', warp: true});
-
-    // Koin & Musuh & Platform Gerak
-    for(let i=800; i < worldEnd - 800; i += 400) {
-        items.push({x: i + 100, y: canvas.height - 250, w: 20, h: 20, collected: false});
-        enemies.push({x: i + 200, y: canvas.height - 100, w: 40, h: 40, vx: -(2 + n), alive: true, range: [i, i+400]});
-        if(i % 800 === 0) {
-            platforms.push({x: i + 300, y: canvas.height - 200, w: 100, h: 20, type: 'moving', base: canvas.height-200, range: 100});
+    function addIngredient(p, item) {
+        if (kitchens[p].plate.length < 6) {
+            kitchens[p].plate.push(item);
+            renderPlate(p);
         }
     }
 
-    // Istana
-    platforms.push({x: worldEnd - 400, y: canvas.height-310, w: 250, h: 250, type: 'castle'});
-}
+    function renderPlate(p) {
+        const plateDiv = document.getElementById(`plate${p}`);
+        plateDiv.innerHTML = '';
+        kitchens[p].plate.forEach(item => {
+            const div = document.createElement('div');
+            div.className = `ingredient ${item}`;
+            div.innerText = ingredientNames[item];
+            plateDiv.appendChild(div);
+        });
+    }
 
-// Mobile Input
-let keys = {};
-const btnIds = ['left', 'down', 'right', 'jump'];
-btnIds.forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener('touchstart', (e) => { e.preventDefault(); keys[id] = true; });
-    el.addEventListener('touchend', (e) => { e.preventDefault(); keys[id] = false; });
-});
+    function serve(p) {
+        const currentPlate = kitchens[p].plate;
+        const targetOrder = kitchens[p].order;
 
-function enterUnderground() {
-    underground = true;
-    document.body.style.background = "#000";
-    player.x = 50; player.y = 0;
-    platforms = [
-        {x: 0, y: canvas.height-60, w: 1500, h: 60, type: 'ground'},
-        {x: 1300, y: canvas.height-140, w: 80, h: 80, type: 'pipe', exit: true}
-    ];
-    items = [];
-    for(let i=200; i<1200; i+=80) items.push({x: i, y: canvas.height-120, w: 20, h: 20, collected: false});
-}
-
-function update() {
-    if(isWinning) return;
-
-    player.vx = (keys['right'] || keys['ArrowRight']) ? player.speed : (keys['left'] || keys['ArrowLeft']) ? -player.speed : 0;
-    player.vy += 0.8;
-
-    // Platform Moving
-    platforms.forEach(p => { if(p.type === 'moving') p.y = p.base + Math.sin(Date.now()*0.003) * p.range; });
-
-    // X Collision
-    player.x += player.vx;
-    platforms.forEach(p => {
-        if(player.x < p.x+p.w && player.x+player.w > p.x && player.y < p.y+p.h && player.y+player.h > p.y) {
-            if(p.type === 'castle') { win(); return; }
-            if(p.warp && (keys['down'] || keys['ArrowDown'])) { enterUnderground(); return; }
-            if(p.exit && (keys['down'] || keys['ArrowDown'])) { buildLevel(level); return; }
-            if(player.vx > 0) player.x = p.x - player.w; else player.x = p.x + p.w;
+        // Cek apakah masakan sama dengan pesanan
+        if (JSON.stringify(currentPlate) === JSON.stringify(targetOrder)) {
+            scores[p] += 10;
+            document.getElementById(`s${p}`).innerText = scores[p];
+            alert(`PLAYER ${p} BERHASIL! +10 Poin`);
+        } else {
+            alert(`PLAYER ${p} SALAH RESEP!`);
         }
-    });
 
-    // Y Collision
-    player.grounded = false;
-    player.y += player.vy;
-    platforms.forEach(p => {
-        if(player.x < p.x+p.w && player.x+player.w > p.x && player.y < p.y+p.h && player.y+player.h > p.y) {
-            if(p.type === 'castle') return;
-            if(player.vy > 0) { player.y = p.y - player.h; player.vy = 0; player.grounded = true; }
-            else { player.y = p.y + p.h; player.vy = 2; }
+        // Reset piring
+        kitchens[p].plate = [];
+        renderPlate(p);
+    }
+
+    // Mencegah zoom saat tap cepat di HP
+    document.addEventListener('touchstart', function (event) {
+        if (event.touches.length > 1) {
+            event.preventDefault();
         }
-    });
-
-    if((keys['jump'] || keys['ArrowUp'] || keys[' ']) && player.grounded) player.vy = player.jump;
-
-    // Items & Enemy
-    items.forEach(i => { if(!i.collected && player.x < i.x+i.w && player.x+player.w > i.x && player.y < i.y+i.h && player.y+player.h > i.y) { i.collected = true; coins++; document.getElementById('cns').innerText = coins; } });
-    enemies.forEach(e => {
-        if(!e.alive) return; e.x += e.vx; if(e.x < e.range[0] || e.x > e.range[1]) e.vx *= -1;
-        if(player.x < e.x+e.w && player.x+player.w > e.x && player.y < e.y+e.h && player.y+player.h > e.y) {
-            if(player.vy > 0 && player.y < e.y) { e.alive = false; player.vy = -12; } else { buildLevel(level); }
-        }
-    });
-
-    cameraX = player.x - canvas.width/4;
-    if(player.y > canvas.height) buildLevel(level);
-
-    draw();
-    requestAnimationFrame(update);
-}
-
-function win() {
-    isWinning = true; document.getElementById('msg-box').style.display='block';
-    setTimeout(() => { 
-        level++; if(level > 10) { document.getElementById('msg-text').innerText = "ALL CLEAR! KING AKIMMCUYY!"; }
-        else { document.getElementById('lvl').innerText = level; buildLevel(level); isWinning = false; document.getElementById('msg-box').style.display='none'; }
-    }, 2000);
-}
-
-function draw() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.save(); ctx.translate(-cameraX, 0);
-
-    platforms.forEach(p => {
-        if(p.type === 'ground') { ctx.fillStyle = "#70483c"; ctx.fillRect(p.x,p.y,p.w,p.h); ctx.fillStyle="#3cb043"; ctx.fillRect(p.x,p.y,p.w,10); }
-        else if(p.type === 'pipe') { ctx.fillStyle = "#32cd32"; ctx.fillRect(p.x,p.y,p.w,p.h); ctx.strokeStyle="black"; ctx.strokeRect(p.x,p.y,p.w,p.h); }
-        else if(p.type === 'castle') { ctx.fillStyle = "#444"; ctx.fillRect(p.x,p.y,p.w,p.h); ctx.fillStyle="black"; ctx.fillRect(p.x+100, p.y+150, 50, 100); }
-        else { ctx.fillStyle="#ffcc33"; ctx.fillRect(p.x,p.y,p.w,p.h); }
-    });
-
-    items.forEach(i => { if(!i.collected) { ctx.fillStyle = "gold"; ctx.beginPath(); ctx.arc(i.x+10, i.y+10, 10, 0, Math.PI*2); ctx.fill(); } });
-    enemies.forEach(e => { if(e.alive) { ctx.fillStyle = "#5c2e0e"; ctx.fillRect(e.x,e.y,e.w,e.h); ctx.fillStyle="white"; ctx.fillRect(e.x+5,e.y+5,8,8); ctx.fillRect(e.x+25,e.y+5,8,8); } });
-
-    // Mario Akimmcuy
-    ctx.fillStyle = "red"; ctx.fillRect(player.x, player.y, player.w, 25);
-    ctx.fillStyle = "blue"; ctx.fillRect(player.x, player.y+25, player.w, 25);
-    ctx.fillStyle = "#ffcc99"; ctx.fillRect(player.x+10, player.y+5, 20, 15);
-    ctx.restore();
-}
-
-window.addEventListener("keydown", e => keys[e.key] = true);
-window.addEventListener("keyup", e => keys[e.key] = false);
-buildLevel(1); update();
+    }, { passive: false });
 </script>
+
 </body>
 </html>
