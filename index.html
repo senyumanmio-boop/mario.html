@@ -2,29 +2,29 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Slendrina Home - Akimmcuy</title>
+    <title>Slendrina Home - Akimmcuy Edition</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; touch-action: none; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Arial', sans-serif; touch-action: none; }
         #ui { position: absolute; top: 15px; left: 15px; color: #f00; font-weight: bold; font-size: 20px; z-index: 10; text-shadow: 2px 2px #000; }
         
-        /* TAMPILAN JUMPSCARE */
+        /* JUMPSCARE SETUP */
         #jumpscare { 
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
             background: #000; display: none; z-index: 1000; align-items: center; justify-content: center;
         }
         #jumpscare img { 
-            width: 100%; height: 100%; object-fit: cover;
-            animation: shake 0.1s infinite; /* Layar bergetar pas jumpscare */
+            width: 100%; height: 100%; object-fit: contain;
+            animation: shake 0.05s infinite; /* Getaran lebih maut */
         }
 
         @keyframes shake {
-            0% { transform: translate(5px, 5px); }
-            50% { transform: translate(-5px, -5px); }
-            100% { transform: translate(5px, -5px); }
+            0% { transform: scale(1.1) translate(10px, 10px); filter: contrast(200%) brightness(150%); }
+            50% { transform: scale(1.1) translate(-10px, -10px); filter: contrast(150%) hue-rotate(90deg); }
+            100% { transform: scale(1.1) translate(10px, -10px); }
         }
 
-        #joystick-area { position: absolute; bottom: 40px; left: 40px; width: 100px; height: 100px; background: rgba(255,255,255,0.05); border-radius: 50%; border: 1px solid #222; }
-        #joystick-stick { position: absolute; width: 40px; height: 40px; background: rgba(255,0,0,0.2); border-radius: 50%; top: 30px; left: 30px; }
+        #joystick-area { position: absolute; bottom: 40px; left: 40px; width: 100px; height: 100px; background: rgba(255,255,255,0.05); border-radius: 50%; border: 1px solid #333; }
+        #joystick-stick { position: absolute; width: 40px; height: 40px; background: rgba(255,0,0,0.3); border-radius: 50%; top: 30px; left: 30px; }
     </style>
 </head>
 <body>
@@ -32,11 +32,10 @@
 <div id="ui">BOOKS: <span id="books">0</span> / 8</div>
 
 <div id="jumpscare">
-    <img src="https://api.readyplayer.me/v1/avatars/65268c78b6631481f3d89d6e.png?expression=scared" id="scary-face">
+    <img src="hantu.jpg" onerror="this.src='https://i.ibb.co/Xz9yB8z/hantu.jpg'">
 </div>
 
 <div id="joystick-area"><div id="joystick-stick"></div></div>
-
 <canvas id="gameCanvas"></canvas>
 
 <script>
@@ -48,24 +47,24 @@ const jumpscareEl = document.getElementById("jumpscare");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// Efek Suara Teriakan (Menggunakan Oscillator karena file mp3 sering diblokir browser)
+// SUARA TERIAKAN (Scream)
 function playScream() {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
 
-    oscillator.type = 'sawtooth'; // Suara kasar kayak teriakan
-    oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.5);
+    osc.type = 'sawtooth'; 
+    osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.8);
     
-    gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+    gain.gain.setValueAtTime(1, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.8);
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
     
-    oscillator.start();
-    oscillator.stop(audioCtx.currentTime + 0.5);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.8);
 }
 
 const map = [
@@ -101,38 +100,30 @@ function update() {
 
     books.forEach((b, i) => {
         if(Math.hypot(player.x - b.x, player.y - b.y) < 40) {
-            books.splice(i, 1);
-            player.books++;
-            booksEl.innerText = player.books;
+            books.splice(i, 1); player.books++; booksEl.innerText = player.books;
         }
     });
 
-    // Munculin Slendrina
     slendrina.timer++;
-    if(slendrina.timer > 300) {
+    if(slendrina.timer > 250) {
         if(!slendrina.active) {
             slendrina.active = true;
             slendrina.x = player.x + (Math.random() - 0.5) * 200;
             slendrina.y = player.y + (Math.random() - 0.5) * 200;
         }
-        if(Math.hypot(player.x - slendrina.x, player.y - slendrina.y) < 80) {
-            triggerJumpscare();
+        if(Math.hypot(player.x - slendrina.x, player.y - slendrina.y) < 70) {
+            jumpscareEl.style.display = "flex";
+            playScream();
+            setTimeout(() => {
+                jumpscareEl.style.display = "none";
+                player.x = 120; player.y = 120;
+                slendrina.active = false; slendrina.timer = -100;
+            }, 800);
         }
-        if(slendrina.timer > 400) { slendrina.active = false; slendrina.timer = 0; }
+        if(slendrina.timer > 350) { slendrina.active = false; slendrina.timer = 0; }
     }
-
     draw();
     requestAnimationFrame(update);
-}
-
-function triggerJumpscare() {
-    jumpscareEl.style.display = "flex";
-    playScream(); // PANGGIL SUARA TERIAKAN
-    setTimeout(() => {
-        jumpscareEl.style.display = "none";
-        player.x = 120; player.y = 120;
-        slendrina.active = false; slendrina.timer = -200;
-    }, 1000);
 }
 
 function draw() {
@@ -140,34 +131,22 @@ function draw() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(canvas.width/2 - player.x, canvas.height/2 - player.y);
-
     for(let y=0; y<map.length; y++) {
         for(let x=0; x<map[y].length; x++) {
-            if(map[y][x] === 1) {
-                ctx.fillStyle = "#222";
-                ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize);
-            }
+            if(map[y][x] === 1) { ctx.fillStyle = "#111"; ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize); }
         }
     }
-
     ctx.fillStyle = "red";
     books.forEach(b => ctx.fillRect(b.x-10, b.y-10, 20, 20));
-
     if(slendrina.active) {
-        ctx.fillStyle = "white";
+        ctx.fillStyle = "rgba(255,255,255,0.3)";
         ctx.beginPath(); ctx.arc(slendrina.x, slendrina.y, 20, 0, Math.PI*2); ctx.fill();
     }
-
     ctx.restore();
-
-    // SENTER
-    const shadow = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 20, canvas.width/2, canvas.height/2, 180);
-    shadow.addColorStop(0, "transparent");
-    shadow.addColorStop(1, "black");
-    ctx.fillStyle = shadow;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const shadow = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 20, canvas.width/2, canvas.height/2, 150);
+    shadow.addColorStop(0, "transparent"); shadow.addColorStop(1, "black");
+    ctx.fillStyle = shadow; ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
-
 update();
 </script>
 </body>
